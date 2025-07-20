@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务与商店系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4F46E5',
+                        secondary: '#10B981',
+                        accent: '#F59E0B',
+                        dark: '#1F2937',
+                        light: '#F9FAFB'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .card-shadow {
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            }
+            .task-gradient {
+                background: linear-gradient(135deg, #4F46E5 0%, #818CF8 100%);
+            }
+            .store-gradient {
+                background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+            }
+            .btn-hover {
+                @apply transition-all duration-300 hover:shadow-lg transform hover:-translate-y-1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-dark min-h-screen flex flex-col">
+    <!-- 顶部导航栏 -->
+    <header class="bg-white shadow-md sticky top-0 z-50 transition-all duration-300" id="header">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-tasks text-primary text-2xl"></i>
+                <h1 class="text-xl md:text-2xl font-bold text-primary">任务与商店系统</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center bg-primary/10 rounded-full px-4 py-2">
+                    <i class="fa fa-diamond text-primary mr-2"></i>
+                    <span class="font-bold text-primary" id="currency-display">0</span>
+                </div>
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                    <i class="fa fa-moon-o text-gray-600"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <!-- 统计卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-xl p-6 card-shadow border-l-4 border-primary">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-gray-500 text-sm">总任务</p>
+                        <h3 class="text-3xl font-bold" id="total-tasks">0</h3>
+                    </div>
+                    <div class="bg-primary/10 p-3 rounded-lg">
+                        <i class="fa fa-list-alt text-primary text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center text-sm">
+                    <i class="fa fa-arrow-up text-green-500 mr-1"></i>
+                    <span class="text-green-500 font-medium">0%</span>
+                    <span class="text-gray-500 ml-1">相比昨日</span>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl p-6 card-shadow border-l-4 border-secondary">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-gray-500 text-sm">已完成</p>
+                        <h3 class="text-3xl font-bold" id="completed-tasks">0</h3>
+                    </div>
+                    <div class="bg-secondary/10 p-3 rounded-lg">
+                        <i class="fa fa-check-circle text-secondary text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center text-sm">
+                    <i class="fa fa-arrow-up text-green-500 mr-1"></i>
+                    <span class="text-green-500 font-medium">0%</span>
+                    <span class="text-gray-500 ml-1">相比昨日</span>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl p-6 card-shadow border-l-4 border-accent">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-gray-500 text-sm">已购买</p>
+                        <h3 class="text-3xl font-bold" id="purchased-items">0</h3>
+                    </div>
+                    <div class="bg-accent/10 p-3 rounded-lg">
+                        <i class="fa fa-shopping-bag text-accent text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center text-sm">
+                    <i class="fa fa-arrow-up text-green-500 mr-1"></i>
+                    <span class="text-green-500 font-medium">0%</span>
+                    <span class="text-gray-500 ml-1">相比昨日</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+            <!-- 任务管理部分 -->
+            <div class="lg:col-span-3 space-y-6">
+                <!-- 添加任务卡片 -->
+                <div class="bg-white rounded-xl p-6 card-shadow task-gradient text-white">
+                    <h2 class="text-xl font-bold mb-4 flex items-center">
+                        <i class="fa fa-plus-circle mr-2"></i>添加新任务
+                    </h2>
+                    <form id="add-task-form" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="md:col-span-2">
+                                <label for="task-name" class="block text-sm font-medium mb-1">任务名称</label>
+                                <input type="text" id="task-name" class="w-full px-4 py-2 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50" placeholder="输入任务名称" required>
+                            </div>
+                            <div>
+                                <label for="task-reward" class="block text-sm font-medium mb-1">奖励</label>
+                                <input type="number" id="task-reward" min="1" class="w-full px-4 py-2 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50" placeholder="奖励" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="task-description" class="block text-sm font-medium mb-1">任务描述</label>
+                            <textarea id="task-description" rows="3" class="w-full px-4 py-2 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50" placeholder="输入任务描述"></textarea>
+                        </div>
+                        <div class="flex justify-end">
+                            <button type="submit" class="bg-white text-primary font-medium px-6 py-2 rounded-lg btn-hover">
+                                <i class="fa fa-plus mr-2"></i>添加任务
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 任务列表卡片 -->
+                <div class="bg-white rounded-xl p-6 card-shadow">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold flex items-center">
+                            <i class="fa fa-tasks mr-2 text-primary"></i>任务列表
+                        </h2>
+                        <div class="relative">
+                            <input type="text" id="task-search" placeholder="搜索任务..." class="pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                            <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3" id="tasks-container">
+                        <div class="text-center py-8 text-gray-500" id="empty-tasks">
+                            <i class="fa fa-tasks text-4xl mb-3 text-gray-300"></i>
+                            <p>暂无任务，请添加新任务</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 商店部分 -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- 添加商品卡片 -->
+                <div class="bg-white rounded-xl p-6 card-shadow store-gradient text-white">
+                    <h2 class="text-xl font-bold mb-4 flex items-center">
+                        <i class="fa fa-shopping-cart mr-2"></i>添加新商品
+                    </h2>
+                    <form id="add-item-form" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="md:col-span-2">
+                                <label for="item-name" class="block text-sm font-medium mb-1">商品名称</label>
+                                <input type="text" id="item-name" class="w-full px-4 py-2 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50" placeholder="输入商品名称" required>
+                            </div>
+                            <div>
+                                <label for="item-price" class="block text-sm font-medium mb-1">价格</label>
+                                <input type="number" id="item-price" min="1" class="w-full px-4 py-2 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50" placeholder="价格" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="item-description" class="block text-sm font-medium mb-1">商品描述</label>
+                            <textarea id="item-description" rows="3" class="w-full px-4 py-2 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50" placeholder="输入商品描述"></textarea>
+                        </div>
+                        <div class="flex justify-end">
+                            <button type="submit" class="bg-white text-secondary font-medium px-6 py-2 rounded-lg btn-hover">
+                                <i class="fa fa-plus mr-2"></i>添加商品
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 商店列表卡片 -->
+                <div class="bg-white rounded-xl p-6 card-shadow">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold flex items-center">
+                            <i class="fa fa-shopping-bag mr-2 text-secondary"></i>商店
+                        </h2>
+                        <div class="relative">
+                            <input type="text" id="item-search" placeholder="搜索商品..." class="pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-secondary/50">
+                            <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3" id="items-container">
+                        <div class="text-center py-8 text-gray-500" id="empty-items">
+                            <i class="fa fa-shopping-bag text-4xl mb-3 text-gray-300"></i>
+                            <p>暂无商品，请添加新商品</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 购买统计可视化卡片 -->
+                <div class="bg-white rounded-xl p-6 card-shadow">
+                    <h2 class="text-xl font-bold mb-6 flex items-center">
+                        <i class="fa fa-bar-chart mr-2 text-accent"></i>购买统计
+                    </h2>
+                    
+                    <div class="space-y-6">
+                        <div class="h-64">
+                            <canvas id="purchase-chart"></canvas>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <h3 class="text-sm font-medium text-gray-700 mb-2">总消费</h3>
+                                <p class="text-2xl font-bold text-accent" id="total-spent">0</p>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <h3 class="text-sm font-medium text-gray-700 mb-2">最受欢迎商品</h3>
+                                <p class="text-lg font-medium text-gray-900" id="most-popular-item">暂无数据</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 已购买商品卡片 -->
+                <div class="bg-white rounded-xl p-6 card-shadow">
+                    <h2 class="text-xl font-bold mb-6 flex items-center">
+                        <i class="fa fa-gift mr-2 text-accent"></i>已购买商品
+                    </h2>
+                    
+                    <div class="space-y-3" id="purchased-container">
+                        <div class="text-center py-8 text-gray-500" id="empty-purchased">
+                            <i class="fa fa-gift text-4xl mb-3 text-gray-300"></i>
+                            <p>暂无购买记录</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-dark text-white py-6">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa fa-tasks text-primary"></i>
+                        <span class="font-bold">任务与商店系统</span>
+                    </div>
+                    <p class="text-gray-400 text-sm mt-1">管理你的任务，兑换你的奖励</p>
+                </div>
+                <div class="flex space-x-6">
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="fa fa-question-circle"></i>
+                        <span class="ml-1">帮助</span>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="fa fa-cog"></i>
+                        <span class="ml-1">设置</span>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="fa fa-user-circle"></i>
+                        <span class="ml-1">账户</span>
+                    </a>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 mt-6 pt-6 text-center text-gray-500 text-sm">
+                &copy; 2025 任务与商店系统 | 设计与开发
+            </div>
+        </div>
+    </footer>
+
+    <!-- 通知组件 -->
+    <div id="notification" class="fixed top-4 right-4 bg-white rounded-lg shadow-lg p-4 transform translate-x-full transition-transform duration-300 flex items-center max-w-sm z-50">
+        <div id="notification-icon" class="w-8 h-8 rounded-full flex items-center justify-center mr-3">
+            <i class="fa fa-info text-white"></i>
+        </div>
+        <div>
+            <h4 id="notification-title" class="font-medium text-sm"></h4>
+            <p id="notification-message" class="text-xs text-gray-500 mt-1"></p>
+        </div>
+        <button id="close-notification" class="ml-auto text-gray-400 hover:text-gray-600">
+            <i class="fa fa-times"></i>
+        </button>
+    </div>
+
+    <script>
+        // 数据模型
+        let appData = {
+            currency: 0,
+            tasks: [],
+            items: [],
+            purchasedItems: []
+        };
+        
+        // 图表实例
+        let purchaseChart = null;
+
+        // DOM 元素
+        const currencyDisplay = document.getElementById('currency-display');
+        const totalTasksDisplay = document.getElementById('total-tasks');
+        const completedTasksDisplay = document.getElementById('completed-tasks');
+        const purchasedItemsDisplay = document.getElementById('purchased-items');
+        const tasksContainer = document.getElementById('tasks-container');
+        const itemsContainer = document.getElementById('items-container');
+        const purchasedContainer = document.getElementById('purchased-container');
+        const emptyTasks = document.getElementById('empty-tasks');
+        const emptyItems = document.getElementById('empty-items');
+        const emptyPurchased = document.getElementById('empty-purchased');
+        const taskSearch = document.getElementById('task-search');
+        const itemSearch = document.getElementById('item-search');
+        const header = document.getElementById('header');
+        const themeToggle = document.getElementById('theme-toggle');
+        const notification = document.getElementById('notification');
+        const notificationTitle = document.getElementById('notification-title');
+        const notificationMessage = document.getElementById('notification-message');
+        const notificationIcon = document.getElementById('notification-icon');
+        const closeNotification = document.getElementById('close-notification');
+        const totalSpentDisplay = document.getElementById('total-spent');
+        const mostPopularItemDisplay = document.getElementById('most-popular-item');
+
+        // 初始化
+        function initApp() {
+            // 加载本地存储数据
+            loadFromLocalStorage();
+            
+            // 更新UI
+            updateUI();
+            
+            // 初始化图表
+            initPurchaseChart();
+            
+            // 事件监听
+            document.getElementById('add-task-form').addEventListener('submit', addTask);
+            document.getElementById('add-item-form').addEventListener('submit', addItem);
+            taskSearch.addEventListener('input', filterTasks);
+            itemSearch.addEventListener('input', filterItems);
+            window.addEventListener('scroll', handleScroll);
+            themeToggle.addEventListener('click', toggleTheme);
+            closeNotification.addEventListener('click', hideNotification);
+        }
+
+        // 从本地存储加载数据
+        function loadFromLocalStorage() {
+            const savedData = localStorage.getItem('taskManagerApp');
+            if (savedData) {
+                appData = JSON.parse(savedData);
+            }
+        }
+
+        // 保存数据到本地存储
+        function saveToLocalStorage() {
+            localStorage.setItem('taskManagerApp', JSON.stringify(appData));
+        }
+
+        // 更新UI
+        function updateUI() {
+            // 更新货币显示
+            currencyDisplay.textContent = appData.currency;
+            
+            // 更新统计数据
+            totalTasksDisplay.textContent = appData.tasks.length;
+            const completedTasks = appData.tasks.filter(task => task.completed).length;
+            completedTasksDisplay.textContent = completedTasks;
+            purchasedItemsDisplay.textContent = appData.purchasedItems.length;
+            
+            // 计算总消费
+            const totalSpent = appData.purchasedItems.reduce((total, item) => total + item.price, 0);
+            totalSpentDisplay.textContent = totalSpent;
+            
+            // 找出最受欢迎的商品
+            const itemCounts = {};
+            appData.purchasedItems.forEach(item => {
+                itemCounts[item.name] = (itemCounts[item.name] || 0) + 1;
+            });
+            
+            let mostPopular = { name: "暂无数据", count: 0 };
+            for (const name in itemCounts) {
+                if (itemCounts[name] > mostPopular.count) {
+                    mostPopular = { name, count: itemCounts[name] };
+                }
+            }
+            
+            mostPopularItemDisplay.textContent = mostPopular.count > 0 ? mostPopular.name : "暂无数据";
+            
+            // 渲染任务列表
+            renderTasks();
+            
+            // 渲染商店列表
+            renderItems();
+            
+            // 渲染已购买商品
+            renderPurchasedItems();
+            
+            // 更新图表
+            updatePurchaseChart();
+        }
+
+        // 渲染任务列表
+        function renderTasks() {
+            tasksContainer.innerHTML = '';
+            
+            if (appData.tasks.length === 0) {
+                emptyTasks.classList.remove('hidden');
+                return;
+            }
+            
+            emptyTasks.classList.add('hidden');
+            
+            appData.tasks.forEach(task => {
+                const taskElement = document.createElement('div');
+                taskElement.className = `bg-white rounded-lg p-4 border ${task.completed ? 'border-gray-200 bg-gray-50' : 'border-primary/20 hover:border-primary/40 hover:shadow-md'} transition-all duration-300`;
+                taskElement.innerHTML = `
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 mt-0.5">
+                            <input type="checkbox" id="task-${task.id}" class="task-checkbox h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary/50" ${task.completed ? 'checked' : ''}>
+                        </div>
+                        <div class="ml-3 flex-1">
+                            <div class="flex items-center justify-between">
+                                <h3 class="font-medium ${task.completed ? 'text-gray-500 line-through' : 'text-gray-900'}">${task.name}</h3>
+                                <div class="flex items-center">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${task.completed ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'}">
+                                        <i class="fa fa-diamond mr-1"></i> ${task.reward}
+                                    </span>
+                                    <button class="delete-task ml-2 text-gray-400 hover:text-red-500" data-id="${task.id}">
+                                        <i class="fa fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            ${task.description ? `<p class="mt-1 text-sm ${task.completed ? 'text-gray-400' : 'text-gray-600'}">${task.description}</p>` : ''}
+                        </div>
+                    </div>
+                `;
+                
+                tasksContainer.appendChild(taskElement);
+                
+                // 添加事件监听
+                const checkbox = taskElement.querySelector(`#task-${task.id}`);
+                checkbox.addEventListener('change', () => toggleTaskCompletion(task.id));
+                
+                const deleteButton = taskElement.querySelector('.delete-task');
+                deleteButton.addEventListener('click', () => deleteTask(task.id));
+            });
+        }
+
+        // 渲染商店列表
+        function renderItems() {
+            itemsContainer.innerHTML = '';
+            
+            if (appData.items.length === 0) {
+                emptyItems.classList.remove('hidden');
+                return;
+            }
+            
+            emptyItems.classList.add('hidden');
+            
+            appData.items.forEach(item => {
+                const isPurchased = appData.purchasedItems.some(purchased => purchased.id === item.id);
+                
+                const itemElement = document.createElement('div');
+                itemElement.className = `bg-white rounded-lg p-4 border border-gray-200 hover:border-secondary/40 hover:shadow-md transition-all duration-300`;
+                itemElement.innerHTML = `
+                    <div class="flex items-start">
+                        <div class="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center flex-shrink-0">
+                            <i class="fa fa-gift text-secondary text-xl"></i>
+                        </div>
+                        <div class="ml-3 flex-1">
+                            <div class="flex items-center justify-between">
+                                <h3 class="font-medium text-gray-900">${item.name}</h3>
+                                <div class="flex items-center">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
+                                        <i class="fa fa-diamond mr-1"></i> ${item.price}
+                                    </span>
+                                    <div class="flex space-x-1">
+                                        ${!isPurchased ? `<button class="buy-item px-2 py-1 bg-secondary text-white text-xs rounded-lg hover:bg-secondary/90 btn-hover" data-id="${item.id}">购买</button>` : `<span class="px-2 py-1 bg-gray-200 text-gray-600 text-xs rounded-lg">已购买</span>`}
+                                        <button class="delete-item px-2 py-1 bg-red-100 text-red-500 text-xs rounded-lg hover:bg-red-200 btn-hover" data-id="${item.id}">删除</button>
+                                    </div>
+                                </div>
+                            </div>
+                            ${item.description ? `<p class="mt-1 text-sm text-gray-600">${item.description}</p>` : ''}
+                        </div>
+                    </div>
+                `;
+                
+                itemsContainer.appendChild(itemElement);
+                
+                // 添加事件监听
+                const buyButton = itemElement.querySelector('.buy-item');
+                if (buyButton) {
+                    buyButton.addEventListener('click', () => buyItem(item.id));
+                }
+                
+                const deleteButton = itemElement.querySelector('.delete-item');
+                deleteButton.addEventListener('click', () => deleteItem(item.id));
+            });
+        }
+
+        // 渲染已购买商品
+        function renderPurchasedItems() {
+            purchasedContainer.innerHTML = '';
+            
+            if (appData.purchasedItems.length === 0) {
+                emptyPurchased.classList.remove('hidden');
+                return;
+            }
+            
+            emptyPurchased.classList.add('hidden');
+            
+            appData.purchasedItems.forEach(item => {
+                const itemElement = document.createElement('div');
+                itemElement.className = `bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-all duration-300`;
+                itemElement.innerHTML = `
+                    <div class="flex items-start">
+                        <div class="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                            <i class="fa fa-check-circle text-accent text-xl"></i>
+                        </div>
+                        <div class="ml-3 flex-1">
+                            <div class="flex items-center justify-between">
+                                <h3 class="font-medium text-gray-900">${item.name}</h3>
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent/10 text-accent">
+                                    <i class="fa fa-diamond mr-1"></i> ${item.price}
+                                </span>
+                            </div>
+                            ${item.description ? `<p class="mt-1 text-sm text-gray-600">${item.description}</p>` : ''}
+                            <div class="mt-2 flex justify-end">
+                                <button class="use-item px-3 py-1 bg-accent text-white text-sm rounded-lg hover:bg-accent/90 btn-hover" data-id="${item.id}">使用</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                purchasedContainer.appendChild(itemElement);
+                
+                // 添加事件监听
+                const useButton = itemElement.querySelector('.use-item');
+                useButton.addEventListener('click', () => useItem(item.id));
+            });
+        }
+
+        // 添加新任务
+        function addTask(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('task-name').value.trim();
+            const reward = parseInt(document.getElementById('task-reward').value);
+            const description = document.getElementById('task-description').value.trim();
+            
+            if (!name || isNaN(reward) || reward <= 0) {
+                showNotification('错误', '请填写有效的任务名称和奖励', 'error');
+                return;
+            }
+            
+            const newTask = {
+                id: Date.now().toString(),
+                name,
+                reward,
+                description,
+                completed: false,
+                createdAt: new Date().toISOString()
+            };
+            
+            appData.tasks.unshift(newTask);
+            saveToLocalStorage();
+            updateUI();
+            
+            // 清空表单
+            document.getElementById('task-name').value = '';
+            document.getElementById('task-reward').value = '';
+            document.getElementById('task-description').value = '';
+            
+            showNotification('成功', '任务已添加', 'success');
+        }
+
+        // 添加新商品
+        function addItem(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('item-name').value.trim();
+            const price = parseInt(document.getElementById('item-price').value);
+            const description = document.getElementById('item-description').value.trim();
+            
+            if (!name || isNaN(price) || price <= 0) {
+                showNotification('错误', '请填写有效的商品名称和价格', 'error');
+                return;
+            }
+            
+            const newItem = {
+                id: Date.now().toString(),
+                name,
+                price,
+                description,
+                purchasedAt: null
+            };
+            
+            appData.items.unshift(newItem);
+            saveToLocalStorage();
+            updateUI();
+            
+            // 清空表单
+            document.getElementById('item-name').value = '';
+            document.getElementById('item-price').value = '';
+            document.getElementById('item-description').value = '';
+            
+            showNotification('成功', '商品已添加到商店', 'success');
+        }
+
+        // 切换任务完成状态
+        function toggleTaskCompletion(taskId) {
+            const task = appData.tasks.find(task => task.id === taskId);
+            if (!task) return;
+            
+            task.completed = !task.completed;
+            
+            // 如果任务被标记为完成，增加货币
+            if (task.completed) {
+                appData.currency += task.reward;
+                showNotification('恭喜', `你完成了任务 "${task.name}"，获得 ${task.reward} 货币!`, 'success');
+            }
+            
+            saveToLocalStorage();
+            updateUI();
+        }
+
+        // 删除任务
+        function deleteTask(taskId) {
+            if (confirm('确定要删除这个任务吗？')) {
+                appData.tasks = appData.tasks.filter(task => task.id !== taskId);
+                saveToLocalStorage();
+                updateUI();
+                showNotification('已删除', '任务已被删除', 'info');
+            }
+        }
+
+        // 购买商品
+        function buyItem(itemId) {
+            const item = appData.items.find(item => item.id === itemId);
+            if (!item) return;
+            
+            if (appData.currency < item.price) {
+                showNotification('余额不足', `你需要 ${item.price} 货币，当前余额 ${appData.currency}`, 'error');
+                return;
+            }
+            
+            // 扣除货币
+            appData.currency -= item.price;
+            
+            // 添加到已购买列表
+            const purchasedItem = { ...item, purchasedAt: new Date().toISOString() };
+            appData.purchasedItems.unshift(purchasedItem);
+            
+            saveToLocalStorage();
+            updateUI();
+            
+            showNotification('购买成功', `你已购买 "${item.name}"，花费 ${item.price} 货币`, 'success');
+        }
+
+        // 使用商品
+        function useItem(itemId) {
+            const item = appData.purchasedItems.find(item => item.id === itemId);
+            if (!item) return;
+            
+            showNotification('使用商品', `你使用了 "${item.name}"`, 'info');
+        }
+
+        // 删除商品
+        function deleteItem(itemId) {
+            if (confirm('确定要删除这个商品吗？此操作不会退还已花费的货币。')) {
+                // 检查是否已被购买
+                const isPurchased = appData.purchasedItems.some(item => item.id === itemId);
+                
+                if (isPurchased) {
+                    // 如果已购买，从已购买列表中移除
+                    appData.purchasedItems = appData.purchasedItems.filter(item => item.id !== itemId);
+                }
+                
+                // 从商店列表中移除
+                appData.items = appData.items.filter(item => item.id !== itemId);
+                
+                saveToLocalStorage();
+                updateUI();
+                showNotification('已删除', '商品已被删除', 'info');
+            }
+        }
+
+        // 过滤任务
+        function filterTasks() {
+            const searchTerm = taskSearch.value.toLowerCase().trim();
+            const taskElements = tasksContainer.querySelectorAll('div');
+            
+            taskElements.forEach(element => {
+                const taskName = element.querySelector('h3').textContent.toLowerCase();
+                const taskDescription = element.querySelector('p')?.textContent.toLowerCase() || '';
+                
+                if (taskName.includes(searchTerm) || taskDescription.includes(searchTerm)) {
+                    element.classList.remove('hidden');
+                } else {
+                    element.classList.add('hidden');
+                }
+            });
+        }
+
+        // 过滤商品
+        function filterItems() {
+            const searchTerm = itemSearch.value.toLowerCase().trim();
+            const itemElements = itemsContainer.querySelectorAll('div');
+            
+            itemElements.forEach(element => {
+                const itemName = element.querySelector('h3').textContent.toLowerCase();
+                const itemDescription = element.querySelector('p')?.textContent.toLowerCase() || '';
+                
+                if (itemName.includes(searchTerm) || itemDescription.includes(searchTerm)) {
+                    element.classList.remove('hidden');
+                } else {
+                    element.classList.add('hidden');
+                }
+            });
+        }
+
+        // 处理滚动事件
+        function handleScroll() {
+            if (window.scrollY > 10) {
+                header.classList.add('py-2', 'shadow-lg');
+                header.classList.remove('py-3', 'shadow-md');
+            } else {
+                header.classList.add('py-3', 'shadow-md');
+                header.classList.remove('py-2', 'shadow-lg');
+            }
+        }
+
+        // 切换主题
+        function toggleTheme() {
+            const isDarkMode = document.documentElement.classList.toggle('dark');
+            themeToggle.innerHTML = isDarkMode ? 
+                '<i class="fa fa-sun-o text-yellow-400"></i>' : 
+                '<i class="fa fa-moon-o text-gray-600"></i>';
+        }
+
+        // 显示通知
+        function showNotification(title, message, type = 'info') {
+            notificationTitle.textContent = title;
+            notificationMessage.textContent = message;
+            
+            // 设置通知样式
+            notification.classList.remove('bg-green-50', 'bg-red-50', 'bg-blue-50', 'border-green-500', 'border-red-500', 'border-blue-500');
+            notificationIcon.classList.remove('bg-green-500', 'bg-red-500', 'bg-blue-500');
+            
+            if (type === 'success') {
+                notification.classList.add('bg-green-50', 'border-green-500');
+                notificationIcon.classList.add('bg-green-500');
+                notificationIcon.innerHTML = '<i class="fa fa-check text-white"></i>';
+            } else if (type === 'error') {
+                notification.classList.add('bg-red-50', 'border-red-500');
+                notificationIcon.classList.add('bg-red-500');
+                notificationIcon.innerHTML = '<i class="fa fa-times text-white"></i>';
+            } else {
+                notification.classList.add('bg-blue-50', 'border-blue-500');
+                notificationIcon.classList.add('bg-blue-500');
+                notificationIcon.innerHTML = '<i class="fa fa-info text-white"></i>';
+            }
+            
+            // 显示通知
+            notification.classList.remove('translate-x-full');
+            
+            // 3秒后自动隐藏
+            setTimeout(hideNotification, 3000);
+        }
+
+        // 隐藏通知
+        function hideNotification() {
+            notification.classList.add('translate-x-full');
+        }
+
+        // 初始化购买统计图表
+        function initPurchaseChart() {
+            const ctx = document.getElementById('purchase-chart').getContext('2d');
+            
+            purchaseChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '购买次数',
+                        data: [],
+                        backgroundColor: 'rgba(245, 158, 11, 0.6)',
+                        borderColor: 'rgba(245, 158, 11, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `购买次数: ${context.raw}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 更新购买统计图表
+        function updatePurchaseChart() {
+            if (!purchaseChart) return;
+            
+            // 计算每个商品的购买次数
+            const purchaseCounts = {};
+            appData.purchasedItems.forEach(item => {
+                purchaseCounts[item.name] = (purchaseCounts[item.name] || 0) + 1;
+            });
+            
+            // 准备图表数据
+            const labels = Object.keys(purchaseCounts);
+            const data = Object.values(purchaseCounts);
+            
+            // 更新图表
+            purchaseChart.data.labels = labels;
+            purchaseChart.data.datasets[0].data = data;
+            purchaseChart.update();
+        }
+
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>    
